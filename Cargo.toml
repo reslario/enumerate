@@ -16,7 +16,3 @@ features = ["full"]
 name = "enumerate"
 path = "src/lib.rs"
 proc-macro = true
-
-[[bin]]
-name = "main"
-path = "src/main.rs"
