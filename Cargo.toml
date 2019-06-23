@@ -1,0 +1,22 @@
+[package]
+name = "enumerate"
+version = "0.1.0"
+authors = ["reslario <simon.kunze2310@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+proc-macro2 = "0.4.30"
+quote = "0.6.12"
+
+[dependencies.syn]
+version = "0.15.36"
+features = ["full"]
+
+[lib]
+name = "enumerate"
+path = "src/lib.rs"
+proc-macro = true
+
+[[bin]]
+name = "main"
+path = "src/main.rs"
