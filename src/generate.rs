@@ -1,46 +1,48 @@
-use syn::{Path, ItemTrait, TraitItem, MethodSig, FnArg};
+use syn::{ItemTrait, TraitItem, MethodSig, FnArg};
 use proc_macro2::{TokenStream, Ident};
 use quote::quote;
-use crate::parse::IsSelf;
+use crate::parse::{IsSelf, Implementer};
 use syn::punctuated::Punctuated;
 use syn::Token;
 use std::ops::Deref;
 
-pub fn generate_enum(name: &Ident, impls: &Vec<Path>) -> TokenStream {
+pub fn generate_enum(enum_name: &Ident, trait_name: &Ident, impls: &Vec<Implementer>) -> TokenStream {
     let variants = impls
         .iter()
-        .map(|path| {
-            let short = path.segments.last().unwrap();
-            quote!{ #short(super::#path), }
+        .map(|im| {
+            let alias = im.alias();
+            let ty = &im.ident;
+            let path = get_path(ty, enum_name, trait_name);
+            quote! { #alias(#path), }
         })
         .collect::<TokenStream>();
     quote! {
-        pub enum #name {
+        enum #enum_name {
             #variants
         }
     }
 }
 
-pub fn generate_impl(trait_def: &ItemTrait, impls: &Vec<Path>) -> TokenStream {
-    let name = &trait_def.ident;
+pub fn generate_impl(trait_def: &ItemTrait, enum_name: &Ident, impls: &Vec<Implementer>) -> TokenStream {
+    let trait_name = &trait_def.ident;
+    let path = get_path(trait_name, enum_name, trait_name);
     let methods = trait_def.items
         .iter()
-        .map(|i| match i {
+        .filter_map(|i| match i {
                 TraitItem::Method(m) => Some(m),
                 _ => None
             }
         )
-        .filter(Option::is_some)
-        .map(|m| generate_method(&name, &m.unwrap().sig, &impls))
+        .map(|m| generate_method(&enum_name, &m.sig, &impls))
         .collect::<TokenStream>();
     quote! {
-        impl super::#name for #name {
+        impl #path for #enum_name {
             #methods
         }
     }
 }
 
-fn generate_method(enum_name: &Ident, sig: &MethodSig, impls: &Vec<Path>) -> TokenStream {
+fn generate_method(enum_name: &Ident, sig: &MethodSig, impls: &Vec<Implementer>) -> TokenStream {
     let method_name = &sig.ident;
     let mut args: Punctuated<FnArg, Token![,]> = Punctuated::new();
     sig.decl.inputs
@@ -57,10 +59,10 @@ fn generate_method(enum_name: &Ident, sig: &MethodSig, impls: &Vec<Path>) -> Tok
     }
     let branches = impls
         .iter()
-        .map(|i| {
-            let short = i.segments.last().unwrap();
+        .map(|im| {
+            let alias = im.alias();
             quote! {
-                #enum_name::#short(inner) => inner.#method_name(#args),
+                #enum_name::#alias(inner) => inner.#method_name(#args),
             }
         })
         .collect::<TokenStream>();
@@ -73,20 +75,30 @@ fn generate_method(enum_name: &Ident, sig: &MethodSig, impls: &Vec<Path>) -> Tok
     }
 }
 
-pub fn generate_froms(to: &Ident, froms: &Vec<Path>) -> TokenStream {
+pub fn generate_froms(to: &Ident, froms: &Vec<Implementer>, trait_name: &Ident) -> TokenStream {
     froms.iter()
-        .map(|f| generate_from(to, f))
+        .map(|f| generate_from(to, f, trait_name))
         .collect()
 }
 
-fn generate_from(to: &Ident, from: &Path) -> TokenStream {
-    let short = from.segments.last().unwrap();
+fn generate_from(to: &Ident, from: &Implementer, trait_name: &Ident) -> TokenStream {
+    let ty = &from.ident;
+    let alias = from.alias();
+    let path = get_path(ty, to, trait_name);
     quote! {
-        impl From<super::#from> for #to {
-            fn from(from: super::#from) -> #to {
-                #to::#short(from)
+        impl From<#path> for #to {
+            fn from(from: #path) -> #to {
+                #to::#alias(from)
             }
         }
+    }
+}
+
+fn get_path(ty: &Ident, enum_name: &Ident, trait_name: &Ident) -> TokenStream {
+    if enum_name == trait_name {
+        quote! { super::#ty }
+    } else {
+        quote! { #ty }
     }
 }
 
