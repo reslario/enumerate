@@ -1,4 +1,5 @@
 [![Docs](https://docs.rs/enumerate/badge.svg)](https://docs.rs/enumerate/)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)]()
 
 # enumerate
 
