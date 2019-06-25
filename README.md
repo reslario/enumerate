@@ -1,3 +1,5 @@
+[![Docs](https://docs.rs/enumerate/badge.svg)](https://docs.rs/enumerate/)
+
 # enumerate
 
 This crate provides a procedural macro that, given a trait and its implementers, generates an enum that can then be used in place of a trait object, avoiding dynamic dispatch. The concept is based on that of the [enum_dispatch](https:docs.rs/enum_dispatch) crate, but this implementation focuses on giving the user a more concise API with even less boilerplate necessary.
