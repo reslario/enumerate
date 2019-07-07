@@ -49,10 +49,17 @@ pub fn generate_impl(trait_def: &ItemTrait, enum_name: &Ident, impls: &Vec<Imple
 
 fn generate_method(enum_name: &Ident, sig: &MethodSig, impls: &Vec<Implementer>) -> TokenStream {
     let method_name = &sig.ident;
-    let mut args: Punctuated<FnArg, Token![,]> = Punctuated::new();
+    let mut args: Punctuated<Pat, Token![,]> = Punctuated::new();
     sig.decl.inputs
         .iter()
         .filter(|arg| !arg.is_self())
+        .filter_map(|arg| {
+            if let FnArg::Captured(arg) = arg {
+                Some(&arg.pat)
+            } else {
+                None
+            }
+        })
         .cloned()
         .for_each(|arg| args.push(arg));
     if sig.decl.inputs.len() == args.len() {
