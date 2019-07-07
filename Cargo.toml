@@ -1,6 +1,6 @@
 [package]
 name = "enumerate"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["reslario <simon.kunze2310@gmail.com>"]
 edition = "2018"
 description = "An attribute macro that, given a trait and its implementers, generates an enum that can be used instead of a trait object, avoiding dynamic dispatch."
