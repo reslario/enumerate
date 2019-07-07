@@ -1,4 +1,4 @@
-use syn::{ItemTrait, TraitItem, MethodSig, FnArg};
+use syn::{ItemTrait, TraitItem, MethodSig, FnArg, Pat};
 use proc_macro2::{TokenStream, Ident};
 use quote::quote;
 use crate::parse::{IsSelf, Implementer};
@@ -6,14 +6,13 @@ use syn::punctuated::Punctuated;
 use syn::Token;
 use std::ops::Deref;
 
-pub fn generate_enum(enum_name: &Ident, trait_name: &Ident, impls: &Vec<Implementer>) -> TokenStream {
+pub fn generate_enum(enum_name: &Ident, impls: &Vec<Implementer>) -> TokenStream {
     let variants = impls
         .iter()
         .map(|im| {
             let alias = im.alias();
             let ty = &im.ident;
-            let path = get_path(ty, enum_name, trait_name);
-            quote! { #alias(#path), }
+            quote! { #alias(#ty), }
         })
         .collect::<TokenStream>();
     quote! {
@@ -25,7 +24,13 @@ pub fn generate_enum(enum_name: &Ident, trait_name: &Ident, impls: &Vec<Implemen
 
 pub fn generate_impl(trait_def: &ItemTrait, enum_name: &Ident, impls: &Vec<Implementer>) -> TokenStream {
     let trait_name = &trait_def.ident;
-    let path = get_path(trait_name, enum_name, trait_name);
+    let trait_path = {
+        if trait_name == enum_name {
+            quote! { super::#trait_name }
+        } else {
+            quote! { #trait_name }
+        }
+    };
     let methods = trait_def.items
         .iter()
         .filter_map(|i| match i {
@@ -36,7 +41,7 @@ pub fn generate_impl(trait_def: &ItemTrait, enum_name: &Ident, impls: &Vec<Imple
         .map(|m| generate_method(&enum_name, &m.sig, &impls))
         .collect::<TokenStream>();
     quote! {
-        impl #path for #enum_name {
+        impl #trait_path for #enum_name {
             #methods
         }
     }
@@ -75,30 +80,21 @@ fn generate_method(enum_name: &Ident, sig: &MethodSig, impls: &Vec<Implementer>)
     }
 }
 
-pub fn generate_froms(to: &Ident, froms: &Vec<Implementer>, trait_name: &Ident) -> TokenStream {
+pub fn generate_froms(to: &Ident, froms: &Vec<Implementer>) -> TokenStream {
     froms.iter()
-        .map(|f| generate_from(to, f, trait_name))
+        .map(|f| generate_from(to, f))
         .collect()
 }
 
-fn generate_from(to: &Ident, from: &Implementer, trait_name: &Ident) -> TokenStream {
+fn generate_from(to: &Ident, from: &Implementer) -> TokenStream {
     let ty = &from.ident;
     let alias = from.alias();
-    let path = get_path(ty, to, trait_name);
     quote! {
-        impl From<#path> for #to {
-            fn from(from: #path) -> #to {
+        impl From<#ty> for #to {
+            fn from(from: #ty) -> #to {
                 #to::#alias(from)
             }
         }
-    }
-}
-
-fn get_path(ty: &Ident, enum_name: &Ident, trait_name: &Ident) -> TokenStream {
-    if enum_name == trait_name {
-        quote! { super::#ty }
-    } else {
-        quote! { #ty }
     }
 }
 
